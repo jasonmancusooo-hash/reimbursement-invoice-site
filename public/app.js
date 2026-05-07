@@ -14,7 +14,8 @@ const state = {
   currentCategory: "dishes",
   cart: [],
   template: "classic",
-  savedInvoices: []
+  savedInvoices: [],
+  storageMode: "api"
 };
 
 const landingPage = document.getElementById("landingPage");
@@ -112,6 +113,19 @@ function clearCurrentMenu() {
   renderCart();
 }
 
+function getLocalInvoices() {
+  try {
+    const raw = localStorage.getItem("saved_invoices_v11");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setLocalInvoices(invoices) {
+  localStorage.setItem("saved_invoices_v11", JSON.stringify(invoices));
+}
+
 function applyInvoiceToCurrentView(invoice) {
   state.currentRestaurant = invoice.restaurantKey || state.currentRestaurant;
   if (!restaurants[state.currentRestaurant]) {
@@ -161,8 +175,15 @@ async function loadRestaurants() {
 }
 
 async function loadSavedInvoices() {
-  const res = await fetch("/api/invoices");
-  state.savedInvoices = await res.json();
+  try {
+    const res = await fetch("/api/invoices");
+    if (!res.ok) throw new Error("api load failed");
+    state.savedInvoices = await res.json();
+    state.storageMode = "api";
+  } catch {
+    state.savedInvoices = getLocalInvoices();
+    state.storageMode = "local";
+  }
   renderSavedInvoices();
 }
 
@@ -212,7 +233,17 @@ function renderCategoryTabs() {
   });
 }
 
-function addToCart(item) {
+async function addToCart(item) {
+  const hasCrossRestaurantItems = state.cart.some((row) => row.restaurant !== state.currentRestaurant);
+  if (hasCrossRestaurantItems) {
+    const confirmed = await showModal({
+      title: "切换餐厅",
+      message: "如果切换餐厅将清空当前菜单，是否继续？"
+    });
+    if (!confirmed) return;
+    clearCurrentMenu();
+  }
+
   const found = state.cart.find((row) => row.id === item.id);
   if (found) {
     found.qty += 1;
@@ -249,7 +280,7 @@ function renderMenu() {
       </div>
       <button>加入</button>
     `;
-    card.querySelector("button").onclick = () => addToCart(item);
+    card.querySelector("button").onclick = async () => addToCart(item);
     menuGrid.appendChild(card);
   });
 }
@@ -371,7 +402,19 @@ function renderSavedInvoices() {
         message: "是否删除这条已保存发票？"
       });
       if (!confirmed) return;
-      await fetch(`/api/invoices/${invoice.id}`, { method: "DELETE" });
+      if (state.storageMode === "api") {
+        try {
+          const response = await fetch(`/api/invoices/${invoice.id}`, { method: "DELETE" });
+          if (!response.ok) throw new Error("api delete failed");
+        } catch {
+          state.storageMode = "local";
+          const localInvoices = getLocalInvoices().filter((row) => row.id !== invoice.id);
+          setLocalInvoices(localInvoices);
+        }
+      } else {
+        const localInvoices = getLocalInvoices().filter((row) => row.id !== invoice.id);
+        setLocalInvoices(localInvoices);
+      }
       await loadSavedInvoices();
     };
 
@@ -393,23 +436,31 @@ async function saveInvoiceToServer() {
     return null;
   }
 
-  const response = await fetch("/api/invoices", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
+  if (state.storageMode === "api") {
+    try {
+      const response = await fetch("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
 
-  if (!response.ok) {
-    await showModal({
-      title: "保存失败",
-      message: "保存失败，请稍后重试",
-      confirmText: "确定",
-      cancelText: "关闭"
-    });
-    return null;
+      if (!response.ok) throw new Error("api save failed");
+      const saved = await response.json();
+      await loadSavedInvoices();
+      return saved;
+    } catch {
+      state.storageMode = "local";
+    }
   }
 
-  const saved = await response.json();
+  const localInvoices = getLocalInvoices();
+  const saved = {
+    id: `local_inv_${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    ...data
+  };
+  localInvoices.push(saved);
+  setLocalInvoices(localInvoices);
   await loadSavedInvoices();
   return saved;
 }
