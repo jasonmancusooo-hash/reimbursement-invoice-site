@@ -18,6 +18,8 @@ const state = {
   storageMode: "api"
 };
 
+const isVercelHost = window.location.hostname.endsWith("vercel.app");
+
 const landingPage = document.getElementById("landingPage");
 const appRoot = document.getElementById("appRoot");
 const enterSystemBtn = document.getElementById("enterSystemBtn");
@@ -175,6 +177,13 @@ async function loadRestaurants() {
 }
 
 async function loadSavedInvoices() {
+  if (isVercelHost) {
+    state.storageMode = "local";
+    state.savedInvoices = getLocalInvoices();
+    renderSavedInvoices();
+    return;
+  }
+
   try {
     const res = await fetch("/api/invoices");
     if (!res.ok) throw new Error("api load failed");
@@ -436,7 +445,7 @@ async function saveInvoiceToServer() {
     return null;
   }
 
-  if (state.storageMode === "api") {
+  if (state.storageMode === "api" && !isVercelHost) {
     try {
       const response = await fetch("/api/invoices", {
         method: "POST",
@@ -530,10 +539,35 @@ async function onExportClick() {
     rows.push([row.exportName, row.qty, row.price, row.price * row.qty]);
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "发票");
-  XLSX.writeFile(wb, `${data.invoiceNo || "invoice"}.xlsx`);
+  if (window.XLSX) {
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "发票");
+    XLSX.writeFile(wb, `${data.invoiceNo || "invoice"}.xlsx`);
+    return;
+  }
+
+  const csvRows = rows.map((columns) =>
+    columns
+      .map((value) => `"${String(value ?? "").replaceAll("\"", "\"\"")}"`)
+      .join(",")
+  );
+  const csvBlob = new Blob([csvRows.join("\\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(csvBlob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${data.invoiceNo || "invoice"}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+
+  await showModal({
+    title: "导出提示",
+    message: "Excel 组件未加载，已自动导出 CSV 文件。",
+    confirmText: "知道了",
+    cancelText: "关闭"
+  });
 }
 
 async function onExitSite() {
