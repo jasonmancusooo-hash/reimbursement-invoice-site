@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>餐厅报销点餐与发票系统</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=Tajawal:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <section id="landingPage" class="landing">
+      <div class="landing-card">
+        <p class="kicker">Reimbursement Ready</p>
+        <h1>公司报销餐饮发票系统</h1>
+        <p id="versionInfoLanding" class="version-text"></p>
+        <p class="subtitle">餐厅点餐、发票生成、模板管理与 Excel 导出的一体化流程。</p>
+        <button id="enterSystemBtn" class="enter-btn">进入系统 - Insha'Allah!</button>
+      </div>
+    </section>
+
+    <main id="appRoot" class="page hidden">
+      <section class="hero">
+        <p class="kicker">Reimbursement Ready</p>
+        <h1>公司报销餐饮发票系统</h1>
+        <p id="versionInfo" class="version-text"></p>
+        <p class="subtitle">选择餐厅、快速点餐、生成可定制发票，并一键导出 Excel。</p>
+        <button id="exitBtn" class="exit-btn">退出网站</button>
+      </section>
+
+      <section class="panel">
+        <h2>1. 选择餐厅</h2>
+        <div id="restaurantTabs" class="tabs"></div>
+      </section>
+
+      <section class="panel grid-two">
+        <div>
+          <h2>2. 点餐</h2>
+          <div class="tools">
+            <input id="searchInput" type="search" placeholder="搜索菜品..." />
+          </div>
+          <div id="categoryTabs" class="category-tabs"></div>
+          <div id="menuGrid" class="menu-grid"></div>
+        </div>
+        <div>
+          <h2>已选清单</h2>
+          <div id="cartList" class="cart-list"></div>
+          <div class="total-row">
+            <span>小计</span>
+            <strong id="subtotal">0.00</strong>
+          </div>
+          <div class="total-row">
+            <span>税率 (%)</span>
+            <input id="taxRate" type="number" min="0" max="100" value="5" />
+          </div>
+          <div class="total-row grand">
+            <span>含税总计</span>
+            <strong id="grandTotal">0.00</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel grid-two">
+        <div>
+          <h2>3. 发票信息定制</h2>
+          <form id="invoiceForm" class="form-grid">
+            <label>发票号<input name="invoiceNo" value="INV-2026-0001" /></label>
+            <label>开票日期<input name="invoiceDate" type="date" /></label>
+            <label>付款方（公司）<input name="payer" value="示例科技有限公司" /></label>
+            <label>税号<input name="taxNo" value="9133XXXXXXXXXXXX" /></label>
+            <label>报销项目<input name="project" value="客户接待" /></label>
+            <label>经办人<input name="handler" value="王经理" /></label>
+            <label>备注<textarea name="note" rows="3">用于公司餐饮报销</textarea></label>
+          </form>
+        </div>
+        <div>
+          <h2>4. 选择发票模板</h2>
+          <div id="templatePicker" class="template-picker">
+            <button data-template="classic" class="template-btn active">经典模板</button>
+            <button data-template="modern" class="template-btn">现代模板</button>
+            <button data-template="compact" class="template-btn">紧凑模板</button>
+          </div>
+          <div id="invoicePreview" class="invoice-preview classic"></div>
+          <div class="action-row">
+            <button id="saveBtn" class="save-btn">保存发票到系统</button>
+            <button id="exportBtn" class="export-btn">导出发票 Excel</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>5. 已保存发票</h2>
+        <div id="savedInvoices" class="saved-list"></div>
+      </section>
+    </main>
+
+    <div id="confirmModal" class="modal hidden">
+      <div class="modal-card">
+        <h3 id="modalTitle">系统提示</h3>
+        <p id="modalMessage"></p>
+        <div class="modal-actions">
+          <button id="modalCancel" class="modal-cancel">否</button>
+          <button id="modalConfirm" class="modal-confirm">是</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

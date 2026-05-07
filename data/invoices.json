@@ -1,0 +1,176 @@
+[
+  {
+    "id": "inv_1778185786708",
+    "createdAt": "2026-05-07T20:29:46.708Z",
+    "invoiceNo": "INV-2026-0001",
+    "invoiceDate": "2026-05-07",
+    "payer": "示例科技有限公司",
+    "taxNo": "9133XXXXXXXXXXXX",
+    "project": "客户接待",
+    "handler": "王经理",
+    "note": "用于公司餐饮报销",
+    "restaurant": "阿拉伯菜",
+    "items": [
+      {
+        "id": "A35",
+        "name": "石榴汁",
+        "price": 42,
+        "qty": 1,
+        "restaurant": "arabic"
+      }
+    ],
+    "subtotal": 42,
+    "taxRate": 5,
+    "taxAmount": 2.1,
+    "total": 44.1,
+    "template": "classic"
+  },
+  {
+    "id": "inv_1778187316162",
+    "createdAt": "2026-05-07T20:55:16.162Z",
+    "invoiceNo": "INV-2026-0001",
+    "invoiceDate": "2026-05-07",
+    "payer": "示例科技有限公司",
+    "taxNo": "9133XXXXXXXXXXXX",
+    "project": "客户接待",
+    "handler": "王经理",
+    "note": "用于公司餐饮报销",
+    "restaurant": "阿拉伯菜",
+    "restaurantKey": "arabic",
+    "items": [
+      {
+        "id": "A35",
+        "name": "石榴汁",
+        "price": 42,
+        "qty": 1,
+        "restaurant": "arabic"
+      },
+      {
+        "id": "A24",
+        "category": "dishes",
+        "restaurant": "arabic",
+        "displayName": "坚果蜂蜜烤南瓜 / قرع مشوي بالعسل والمكسرات",
+        "exportName": "قرع مشوي بالعسل والمكسرات",
+        "price": 82,
+        "qty": 1
+      },
+      {
+        "id": "A29",
+        "category": "dishes",
+        "restaurant": "arabic",
+        "displayName": "中东香料虾 / روبيان بالبهارات الشرقية",
+        "exportName": "روبيان بالبهارات الشرقية",
+        "price": 178,
+        "qty": 1
+      },
+      {
+        "id": "A32",
+        "category": "dishes",
+        "restaurant": "arabic",
+        "displayName": "阿拉伯混合烤肉拼盘 / مشاوي مشكلة عربية",
+        "exportName": "مشاوي مشكلة عربية",
+        "price": 268,
+        "qty": 1
+      }
+    ],
+    "subtotal": 570,
+    "taxRate": 5,
+    "taxAmount": 28.5,
+    "total": 598.5,
+    "template": "classic"
+  },
+  {
+    "id": "inv_1778187332274",
+    "createdAt": "2026-05-07T20:55:32.274Z",
+    "invoiceNo": "INV-2026-0001",
+    "invoiceDate": "2026-05-07",
+    "payer": "示例科技有限公司",
+    "taxNo": "9133XXXXXXXXXXXX",
+    "project": "客户接待",
+    "handler": "王经理",
+    "note": "用于公司餐饮报销",
+    "restaurant": "阿拉伯菜",
+    "restaurantKey": "arabic",
+    "items": [
+      {
+        "id": "A24",
+        "category": "dishes",
+        "restaurant": "arabic",
+        "displayName": "坚果蜂蜜烤南瓜 / قرع مشوي بالعسل والمكسرات",
+        "exportName": "قرع مشوي بالعسل والمكسرات",
+        "price": 82,
+        "qty": 1
+      },
+      {
+        "id": "A29",
+        "category": "dishes",
+        "restaurant": "arabic",
+        "displayName": "中东香料虾 / روبيان بالبهارات الشرقية",
+        "exportName": "روبيان بالبهارات الشرقية",
+        "price": 178,
+        "qty": 1
+      },
+      {
+        "id": "A32",
+        "category": "dishes",
+        "restaurant": "arabic",
+        "displayName": "阿拉伯混合烤肉拼盘 / مشاوي مشكلة عربية",
+        "exportName": "مشاوي مشكلة عربية",
+        "price": 268,
+        "qty": 1
+      }
+    ],
+    "subtotal": 528,
+    "taxRate": 5,
+    "taxAmount": 26.400000000000002,
+    "total": 554.4,
+    "template": "classic"
+  },
+  {
+    "id": "inv_1778191271381",
+    "createdAt": "2026-05-07T22:01:11.381Z",
+    "invoiceNo": "INV-2026-0001",
+    "invoiceDate": "2026-05-07",
+    "payer": "示例科技有限公司",
+    "taxNo": "9133XXXXXXXXXXXX",
+    "project": "客户接待",
+    "handler": "王经理",
+    "note": "用于公司餐饮报销",
+    "restaurant": "阿拉伯菜",
+    "restaurantKey": "arabic",
+    "items": [
+      {
+        "id": "A01",
+        "category": "dishes",
+        "restaurant": "arabic",
+        "displayName": "阿拉伯烤羊排 / ضلوع خروف مشوية",
+        "exportName": "ضلوع خروف مشوية",
+        "price": 228,
+        "qty": 1
+      },
+      {
+        "id": "A03",
+        "category": "dishes",
+        "restaurant": "arabic",
+        "displayName": "炭烤牛肉串拼盘 / مشاوي لحم بقري مشكلة",
+        "exportName": "مشاوي لحم بقري مشكلة",
+        "price": 188,
+        "qty": 1
+      },
+      {
+        "id": "A04",
+        "category": "dishes",
+        "restaurant": "arabic",
+        "displayName": "阿拉伯烤鱼 / سمك مشوي على الطريقة العربية",
+        "exportName": "سمك مشوي على الطريقة العربية",
+        "price": 218,
+        "qty": 1
+      }
+    ],
+    "subtotal": 634,
+    "taxRate": 5,
+    "taxAmount": 31.700000000000003,
+    "total": 665.7,
+    "template": "classic"
+  }
+]
