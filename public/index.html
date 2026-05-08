@@ -25,41 +25,9 @@
           <p>当前版本：v1.2.1</p>
           <button type="button" id="openChangelogBtn" class="open-log-btn">查看更新日志</button>
         </div>
-        <div class="landing-updates">
-          <h3>背景个性化</h3>
-          <div class="bg-grid">
-            <label>发光颜色
-              <select id="bgColorSelect">
-                <option value="cyan">青蓝</option>
-                <option value="emerald">翠绿</option>
-                <option value="violet">霓紫</option>
-                <option value="sunset">橙红</option>
-              </select>
-            </label>
-            <label>发光强度
-              <select id="bgGlowSelect">
-                <option value="soft">柔和</option>
-                <option value="intense">炫光</option>
-              </select>
-            </label>
-            <label>流动样式
-              <select id="bgFlowSelect">
-                <option value="calm">平稳流</option>
-                <option value="wave">波浪流</option>
-                <option value="pulse">脉冲流</option>
-              </select>
-            </label>
-            <label>图案样式
-              <select id="bgPatternSelect">
-                <option value="tiny">细密像素</option>
-                <option value="classic">经典像素</option>
-                <option value="chunky">大块像素</option>
-              </select>
-            </label>
-          </div>
-        </div>
       </div>
     </section>
+    <button type="button" id="bgPersonalizeBtn" class="bg-personalize-btn">背景个性化</button>
 
     <main id="appRoot" class="page hidden">
       <section class="hero">
@@ -170,6 +138,41 @@
         </div>
         <div class="modal-actions">
           <button type="button" id="closeChangelogBtn" class="modal-confirm">关闭</button>
+        </div>
+      </div>
+    </div>
+    <div id="bgModal" class="modal hidden">
+      <div class="modal-card">
+        <h3>背景个性化</h3>
+        <div class="bg-config">
+          <p>发光颜色</p>
+          <div class="chip-row" data-group="color">
+            <button type="button" class="bg-chip" data-key="color" data-value="cyan">青蓝</button>
+            <button type="button" class="bg-chip" data-key="color" data-value="emerald">翠绿</button>
+            <button type="button" class="bg-chip" data-key="color" data-value="violet">霓紫</button>
+            <button type="button" class="bg-chip" data-key="color" data-value="sunset">橙红</button>
+          </div>
+          <p>发光强度</p>
+          <div class="chip-row" data-group="glow">
+            <button type="button" class="bg-chip" data-key="glow" data-value="soft">柔和</button>
+            <button type="button" class="bg-chip" data-key="glow" data-value="intense">炫光</button>
+          </div>
+          <p>流动样式</p>
+          <div class="chip-row" data-group="flow">
+            <button type="button" class="bg-chip" data-key="flow" data-value="calm">平稳流</button>
+            <button type="button" class="bg-chip" data-key="flow" data-value="wave">波浪流</button>
+            <button type="button" class="bg-chip" data-key="flow" data-value="pulse">脉冲流</button>
+          </div>
+          <p>图案样式</p>
+          <div class="chip-row" data-group="pattern">
+            <button type="button" class="bg-chip" data-key="pattern" data-value="tiny">细密像素</button>
+            <button type="button" class="bg-chip" data-key="pattern" data-value="classic">经典像素</button>
+            <button type="button" class="bg-chip" data-key="pattern" data-value="chunky">大块像素</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="bgRandomBtn" class="modal-neutral">随机一组</button>
+          <button type="button" id="bgCloseBtn" class="modal-confirm">完成</button>
         </div>
       </div>
     </div>

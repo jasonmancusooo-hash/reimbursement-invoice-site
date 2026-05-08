@@ -32,10 +32,11 @@ const versionInfoLanding = document.getElementById("versionInfoLanding");
 const openChangelogBtn = document.getElementById("openChangelogBtn");
 const changelogModal = document.getElementById("changelogModal");
 const closeChangelogBtn = document.getElementById("closeChangelogBtn");
-const bgColorSelect = document.getElementById("bgColorSelect");
-const bgGlowSelect = document.getElementById("bgGlowSelect");
-const bgFlowSelect = document.getElementById("bgFlowSelect");
-const bgPatternSelect = document.getElementById("bgPatternSelect");
+const bgPersonalizeBtn = document.getElementById("bgPersonalizeBtn");
+const bgModal = document.getElementById("bgModal");
+const bgCloseBtn = document.getElementById("bgCloseBtn");
+const bgRandomBtn = document.getElementById("bgRandomBtn");
+const bgChips = [...document.querySelectorAll(".bg-chip")];
 
 const confirmModal = document.getElementById("confirmModal");
 const modalTitle = document.getElementById("modalTitle");
@@ -818,13 +819,27 @@ function bindEvents() {
     changelogModal.classList.add("hidden");
   });
 
-  [bgColorSelect, bgGlowSelect, bgFlowSelect, bgPatternSelect].forEach((select) => {
-    if (!select) return;
-    select.addEventListener("change", () => {
-      bgState.color = bgColorSelect.value;
-      bgState.glow = bgGlowSelect.value;
-      bgState.flow = bgFlowSelect.value;
-      bgState.pattern = bgPatternSelect.value;
+  bgPersonalizeBtn.addEventListener("click", () => {
+    syncBgChipActiveState();
+    bgModal.classList.remove("hidden");
+  });
+
+  bgCloseBtn.addEventListener("click", () => {
+    bgModal.classList.add("hidden");
+  });
+
+  bgRandomBtn.addEventListener("click", () => {
+    randomizeBackgroundSettings();
+    syncBgChipActiveState();
+  });
+
+  bgChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const key = chip.dataset.key;
+      const value = chip.dataset.value;
+      if (!key || !value) return;
+      bgState[key] = value;
+      syncBgChipActiveState();
     });
   });
 
@@ -933,11 +948,13 @@ function initPixelFlowBackground() {
   window.addEventListener("beforeunload", () => cancelAnimationFrame(animationId), { once: true });
 }
 
-function applyBackgroundSettingsToControls() {
-  if (bgColorSelect) bgColorSelect.value = bgState.color;
-  if (bgGlowSelect) bgGlowSelect.value = bgState.glow;
-  if (bgFlowSelect) bgFlowSelect.value = bgState.flow;
-  if (bgPatternSelect) bgPatternSelect.value = bgState.pattern;
+function syncBgChipActiveState() {
+  bgChips.forEach((chip) => {
+    const key = chip.dataset.key;
+    const value = chip.dataset.value;
+    const active = key && value && bgState[key] === value;
+    chip.classList.toggle("active", Boolean(active));
+  });
 }
 
 function randomizeBackgroundSettings() {
@@ -946,7 +963,7 @@ function randomizeBackgroundSettings() {
   bgState.glow = pick(["soft", "intense"]);
   bgState.flow = pick(["calm", "wave", "pulse"]);
   bgState.pattern = pick(["tiny", "classic", "chunky"]);
-  applyBackgroundSettingsToControls();
+  syncBgChipActiveState();
 }
 
 async function bootstrap() {
