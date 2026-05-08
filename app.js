@@ -87,7 +87,7 @@ app.post("/api/export-template", async (req, res) => {
       return res.status(400).json({ error: "模板第二工作表不存在" });
     }
 
-    sheet.getCell("G4").value = `Date: ${formatTemplateDate(payload.invoiceDate || "")}`;
+    sheet.getCell("D14").value = `Date: ${formatTemplateDate(payload.invoiceDate || "")}`;
 
     for (let row = 17; row <= 33; row += 1) {
       sheet.getCell(`C${row}`).value = row - 16;
