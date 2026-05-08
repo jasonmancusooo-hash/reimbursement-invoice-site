@@ -129,6 +129,20 @@ function toTemplateDate(dateStr) {
   return `${Number(day)}/${Number(month)}/${year}`;
 }
 
+function setCellValuePreserveStyle(ws, address, value, type) {
+  if (!ws[address]) ws[address] = {};
+  ws[address].t = type;
+  ws[address].v = value;
+  delete ws[address].w;
+}
+
+function clearCellValuePreserveStyle(ws, address) {
+  if (!ws[address]) return;
+  delete ws[address].v;
+  delete ws[address].t;
+  delete ws[address].w;
+}
+
 function getLocalInvoices() {
   try {
     const raw = localStorage.getItem("saved_invoices_v11");
@@ -563,31 +577,31 @@ async function onExportClick() {
       const response = await fetch("/templates/invoice-template.xlsx");
       if (!response.ok) throw new Error("template fetch failed");
       const buffer = await response.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: "array", cellStyles: true });
+      const wb = XLSX.read(buffer, { type: "array", cellStyles: true, cellFormula: true });
       const sheetName = wb.SheetNames[1];
       const ws = wb.Sheets[sheetName];
       if (!ws) throw new Error("sheet2 missing");
 
-      ws.G4 = { t: "s", v: `Date: ${toTemplateDate(data.invoiceDate)}` };
+      setCellValuePreserveStyle(ws, "G4", `Date: ${toTemplateDate(data.invoiceDate)}`, "s");
       if ((data.restaurantName || "").trim()) {
-        ws.G2 = { t: "s", v: data.restaurantName.trim() };
+        setCellValuePreserveStyle(ws, "G2", data.restaurantName.trim(), "s");
       }
 
       for (let row = 17; row <= 33; row += 1) {
-        ws[`D${row}`] = { t: "s", v: "" };
-        ws[`E${row}`] = { t: "n", v: 0 };
-        ws[`F${row}`] = { t: "n", v: 0 };
+        clearCellValuePreserveStyle(ws, `D${row}`);
+        clearCellValuePreserveStyle(ws, `E${row}`);
+        clearCellValuePreserveStyle(ws, `F${row}`);
       }
 
       const maxRows = 17;
       data.items.slice(0, maxRows).forEach((item, index) => {
         const row = 17 + index;
-        ws[`D${row}`] = { t: "s", v: item.exportName };
-        ws[`E${row}`] = { t: "n", v: item.qty };
-        ws[`F${row}`] = { t: "n", v: item.price };
+        setCellValuePreserveStyle(ws, `D${row}`, item.exportName, "s");
+        setCellValuePreserveStyle(ws, `E${row}`, item.qty, "n");
+        setCellValuePreserveStyle(ws, `F${row}`, item.price, "n");
       });
 
-      XLSX.writeFile(wb, `${data.invoiceNo || "invoice"}.xlsx`);
+      XLSX.writeFile(wb, `${data.invoiceNo || "invoice"}.xlsx`, { cellStyles: true, bookType: "xlsx" });
       return;
     } catch {
       // Fall back to CSV export if template loading fails.
