@@ -32,6 +32,10 @@ const versionInfoLanding = document.getElementById("versionInfoLanding");
 const openChangelogBtn = document.getElementById("openChangelogBtn");
 const changelogModal = document.getElementById("changelogModal");
 const closeChangelogBtn = document.getElementById("closeChangelogBtn");
+const bgColorSelect = document.getElementById("bgColorSelect");
+const bgGlowSelect = document.getElementById("bgGlowSelect");
+const bgFlowSelect = document.getElementById("bgFlowSelect");
+const bgPatternSelect = document.getElementById("bgPatternSelect");
 
 const confirmModal = document.getElementById("confirmModal");
 const modalTitle = document.getElementById("modalTitle");
@@ -58,6 +62,13 @@ const savedInvoicesEl = document.getElementById("savedInvoices");
 const batchDeleteBtn = document.getElementById("batchDeleteBtn");
 const panels = [...document.querySelectorAll(".panel")];
 const pixelFlowBg = document.getElementById("pixelFlowBg");
+
+const bgState = {
+  color: "cyan",
+  glow: "soft",
+  flow: "calm",
+  pattern: "classic"
+};
 
 if (!invoiceForm.elements.invoiceDate.value) {
   invoiceForm.elements.invoiceDate.valueAsDate = new Date();
@@ -794,6 +805,7 @@ function bindFocusHandlers() {
 
 function bindEvents() {
   enterSystemBtn.addEventListener("click", () => {
+    randomizeBackgroundSettings();
     landingPage.classList.add("hidden");
     appRoot.classList.remove("hidden");
   });
@@ -804,6 +816,16 @@ function bindEvents() {
 
   closeChangelogBtn.addEventListener("click", () => {
     changelogModal.classList.add("hidden");
+  });
+
+  [bgColorSelect, bgGlowSelect, bgFlowSelect, bgPatternSelect].forEach((select) => {
+    if (!select) return;
+    select.addEventListener("change", () => {
+      bgState.color = bgColorSelect.value;
+      bgState.glow = bgGlowSelect.value;
+      bgState.flow = bgFlowSelect.value;
+      bgState.pattern = bgPatternSelect.value;
+    });
   });
 
   exitBtn.addEventListener("click", onExitSite);
@@ -845,7 +867,18 @@ function initPixelFlowBackground() {
   let width = 0;
   let height = 0;
   let animationId = 0;
-  const step = 16;
+  const colorHueMap = {
+    cyan: [185, 225],
+    emerald: [140, 175],
+    violet: [255, 290],
+    sunset: [15, 42]
+  };
+
+  const patternStepMap = {
+    tiny: 12,
+    classic: 16,
+    chunky: 22
+  };
 
   function resize() {
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -859,25 +892,32 @@ function initPixelFlowBackground() {
   }
 
   function draw(timeMs) {
-    const t = timeMs * 0.0007;
+    const flowSpeed = bgState.flow === "calm" ? 0.00055 : bgState.flow === "wave" ? 0.00085 : 0.00125;
+    const t = timeMs * flowSpeed;
+    const step = patternStepMap[bgState.pattern] || 16;
+    const [hueMin, hueMax] = colorHueMap[bgState.color] || [185, 225];
+    const glowBoost = bgState.glow === "intense" ? 1.35 : 1;
+    const glowCutoff = bgState.glow === "intense" ? 0.12 : 0.2;
     ctx.clearRect(0, 0, width, height);
 
     for (let y = 0; y < height; y += step) {
       for (let x = 0; x < width; x += step) {
-        const flow = Math.sin((x * 0.012) + t) + Math.cos((y * 0.014) - t * 1.3);
-        const glow = Math.max(0, (flow + 2) / 4);
-        if (glow < 0.2) continue;
+        const waveBase = Math.sin((x * 0.012) + t) + Math.cos((y * 0.014) - t * 1.3);
+        const waveAlt = Math.sin((x * 0.009) - t * 0.7) * Math.cos((y * 0.01) + t * 1.1);
+        const flow = bgState.flow === "pulse" ? waveBase + waveAlt : waveBase;
+        const glow = Math.max(0, ((flow + 2) / 4) * glowBoost);
+        if (glow < glowCutoff) continue;
 
-        const hue = 185 + glow * 40;
-        const alpha = 0.08 + glow * 0.24;
-        const size = 5 + glow * 7;
+        const hue = hueMin + ((hueMax - hueMin) * Math.min(glow, 1));
+        const alpha = (bgState.glow === "intense" ? 0.12 : 0.08) + glow * (bgState.glow === "intense" ? 0.34 : 0.24);
+        const size = (bgState.pattern === "chunky" ? 8 : 5) + glow * (bgState.pattern === "tiny" ? 5 : 7);
 
         ctx.fillStyle = `hsla(${hue}, 92%, 62%, ${alpha})`;
         ctx.fillRect(x + 4, y + 4, size, size);
 
-        if (glow > 0.65) {
-          ctx.shadowColor = `hsla(${hue}, 98%, 70%, 0.75)`;
-          ctx.shadowBlur = 10;
+        if (glow > (bgState.glow === "intense" ? 0.5 : 0.65)) {
+          ctx.shadowColor = `hsla(${hue}, 98%, 70%, ${bgState.glow === "intense" ? 0.95 : 0.75})`;
+          ctx.shadowBlur = bgState.glow === "intense" ? 16 : 10;
           ctx.fillRect(x + 4, y + 4, size, size);
           ctx.shadowBlur = 0;
         }
@@ -893,7 +933,24 @@ function initPixelFlowBackground() {
   window.addEventListener("beforeunload", () => cancelAnimationFrame(animationId), { once: true });
 }
 
+function applyBackgroundSettingsToControls() {
+  if (bgColorSelect) bgColorSelect.value = bgState.color;
+  if (bgGlowSelect) bgGlowSelect.value = bgState.glow;
+  if (bgFlowSelect) bgFlowSelect.value = bgState.flow;
+  if (bgPatternSelect) bgPatternSelect.value = bgState.pattern;
+}
+
+function randomizeBackgroundSettings() {
+  const pick = (list) => list[Math.floor(Math.random() * list.length)];
+  bgState.color = pick(["cyan", "emerald", "violet", "sunset"]);
+  bgState.glow = pick(["soft", "intense"]);
+  bgState.flow = pick(["calm", "wave", "pulse"]);
+  bgState.pattern = pick(["tiny", "classic", "chunky"]);
+  applyBackgroundSettingsToControls();
+}
+
 async function bootstrap() {
+  randomizeBackgroundSettings();
   initPixelFlowBackground();
   setVersionText();
   bindEvents();
