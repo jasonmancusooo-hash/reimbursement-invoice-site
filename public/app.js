@@ -32,6 +32,10 @@ const versionInfoLanding = document.getElementById("versionInfoLanding");
 const openChangelogBtn = document.getElementById("openChangelogBtn");
 const changelogModal = document.getElementById("changelogModal");
 const closeChangelogBtn = document.getElementById("closeChangelogBtn");
+const authModal = document.getElementById("authModal");
+const authCodeInput = document.getElementById("authCodeInput");
+const authCancelBtn = document.getElementById("authCancelBtn");
+const authConfirmBtn = document.getElementById("authConfirmBtn");
 const bgPersonalizeBtn = document.getElementById("bgPersonalizeBtn");
 const bgModal = document.getElementById("bgModal");
 const bgCloseBtn = document.getElementById("bgCloseBtn");
@@ -70,6 +74,7 @@ const bgState = {
   flow: "calm",
   pattern: "classic"
 };
+const ACCESS_CODE = "jason";
 
 if (!invoiceForm.elements.invoiceDate.value) {
   invoiceForm.elements.invoiceDate.valueAsDate = new Date();
@@ -806,9 +811,38 @@ function bindFocusHandlers() {
 
 function bindEvents() {
   enterSystemBtn.addEventListener("click", () => {
+    authModal.classList.remove("hidden");
+    authCodeInput.value = "";
+    setTimeout(() => authCodeInput.focus(), 0);
+  });
+
+  authCancelBtn.addEventListener("click", () => {
+    authModal.classList.add("hidden");
+  });
+
+  authConfirmBtn.addEventListener("click", async () => {
+    const code = authCodeInput.value.trim();
+    if (code !== ACCESS_CODE) {
+      await showModal({
+        title: "校验失败",
+        message: "检验码错误，请重试。",
+        confirmText: "确定",
+        cancelText: "关闭"
+      });
+      setTimeout(() => authCodeInput.focus(), 0);
+      return;
+    }
+    authModal.classList.add("hidden");
     randomizeBackgroundSettings();
     landingPage.classList.add("hidden");
     appRoot.classList.remove("hidden");
+  });
+
+  authCodeInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      authConfirmBtn.click();
+    }
   });
 
   openChangelogBtn.addEventListener("click", () => {
