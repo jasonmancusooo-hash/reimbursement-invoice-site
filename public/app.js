@@ -122,27 +122,6 @@ function setDefaultRestaurantNameByRestaurantKey(restaurantKey) {
   }
 }
 
-function toTemplateDate(dateStr) {
-  if (!dateStr) return "";
-  const [year, month, day] = dateStr.split("-");
-  if (!year || !month || !day) return dateStr;
-  return `${Number(day)}/${Number(month)}/${year}`;
-}
-
-function setCellValuePreserveStyle(ws, address, value, type) {
-  if (!ws[address]) ws[address] = {};
-  ws[address].t = type;
-  ws[address].v = value;
-  delete ws[address].w;
-}
-
-function clearCellValuePreserveStyle(ws, address) {
-  if (!ws[address]) return;
-  delete ws[address].v;
-  delete ws[address].t;
-  delete ws[address].w;
-}
-
 function getLocalInvoices() {
   try {
     const raw = localStorage.getItem("saved_invoices_v11");
@@ -550,85 +529,31 @@ async function onExportClick() {
     clearCurrentMenu();
   }
 
-  const rows = [
-    ["发票号", data.invoiceNo],
-    ["开票日期", data.invoiceDate],
-    ["付款方", data.payer],
-    ["税号", data.taxNo],
-    ["报销项目", data.project],
-    ["经办人", data.handler],
-    ["餐厅", data.restaurant],
-    ["税率(%)", data.taxRate],
-    ["未税金额", data.subtotal],
-    ["税额", data.taxAmount],
-    ["合计", data.total],
-    ["备注", data.note],
-    [],
-    ["明细"],
-    ["Item Name", "Qty", "Unit Price", "Amount"]
-  ];
-
-  data.items.forEach((row) => {
-    rows.push([row.exportName, row.qty, row.price, row.price * row.qty]);
+  const response = await fetch("/api/export-template", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
   });
 
-  if (window.XLSX) {
-    try {
-      const response = await fetch("/templates/invoice-template.xlsx");
-      if (!response.ok) throw new Error("template fetch failed");
-      const buffer = await response.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: "array", cellStyles: true, cellFormula: true });
-      const sheetName = wb.SheetNames[1];
-      const ws = wb.Sheets[sheetName];
-      if (!ws) throw new Error("sheet2 missing");
-
-      setCellValuePreserveStyle(ws, "G4", `Date: ${toTemplateDate(data.invoiceDate)}`, "s");
-      if ((data.restaurantName || "").trim()) {
-        setCellValuePreserveStyle(ws, "G2", data.restaurantName.trim(), "s");
-      }
-
-      for (let row = 17; row <= 33; row += 1) {
-        clearCellValuePreserveStyle(ws, `D${row}`);
-        clearCellValuePreserveStyle(ws, `E${row}`);
-        clearCellValuePreserveStyle(ws, `F${row}`);
-      }
-
-      const maxRows = 17;
-      data.items.slice(0, maxRows).forEach((item, index) => {
-        const row = 17 + index;
-        setCellValuePreserveStyle(ws, `D${row}`, item.exportName, "s");
-        setCellValuePreserveStyle(ws, `E${row}`, item.qty, "n");
-        setCellValuePreserveStyle(ws, `F${row}`, item.price, "n");
-      });
-
-      XLSX.writeFile(wb, `${data.invoiceNo || "invoice"}.xlsx`, { cellStyles: true, bookType: "xlsx" });
-      return;
-    } catch {
-      // Fall back to CSV export if template loading fails.
-    }
+  if (!response.ok) {
+    await showModal({
+      title: "导出失败",
+      message: "模板导出失败，请稍后重试。",
+      confirmText: "确定",
+      cancelText: "关闭"
+    });
+    return;
   }
 
-  const csvRows = rows.map((columns) =>
-    columns
-      .map((value) => `"${String(value ?? "").replaceAll("\"", "\"\"")}"`)
-      .join(",")
-  );
-  const csvBlob = new Blob([csvRows.join("\\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(csvBlob);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${data.invoiceNo || "invoice"}.csv`;
+  link.download = `${data.invoiceNo || "invoice"}.xlsx`;
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-
-  await showModal({
-    title: "导出提示",
-    message: "Excel 组件未加载，已自动导出 CSV 文件。",
-    confirmText: "知道了",
-    cancelText: "关闭"
-  });
 }
 
 async function onExitSite() {
