@@ -1,4 +1,4 @@
-const APP_VERSION = "1.1";
+const APP_VERSION = "1.2.1";
 
 let restaurants = {};
 
@@ -9,13 +9,16 @@ const categoryLabels = {
   soup: "汤品"
 };
 
+const restaurantOrder = ["sichuan", "hotpot", "arabic"];
+
 const state = {
-  currentRestaurant: "arabic",
+  currentRestaurant: "sichuan",
   currentCategory: "dishes",
   cart: [],
   template: "classic",
   savedInvoices: [],
-  storageMode: "api"
+  storageMode: "api",
+  selectedSavedIds: new Set()
 };
 
 const isVercelHost = window.location.hostname.endsWith("vercel.app");
@@ -37,6 +40,7 @@ const tabWrap = document.getElementById("restaurantTabs");
 const categoryTabs = document.getElementById("categoryTabs");
 const menuGrid = document.getElementById("menuGrid");
 const cartList = document.getElementById("cartList");
+const clearCartBtn = document.getElementById("clearCartBtn");
 const subtotalEl = document.getElementById("subtotal");
 const grandTotalEl = document.getElementById("grandTotal");
 const taxRateEl = document.getElementById("taxRate");
@@ -47,6 +51,8 @@ const invoicePreview = document.getElementById("invoicePreview");
 const exportBtn = document.getElementById("exportBtn");
 const saveBtn = document.getElementById("saveBtn");
 const savedInvoicesEl = document.getElementById("savedInvoices");
+const batchDeleteBtn = document.getElementById("batchDeleteBtn");
+const panels = [...document.querySelectorAll(".panel")];
 
 if (!invoiceForm.elements.invoiceDate.value) {
   invoiceForm.elements.invoiceDate.valueAsDate = new Date();
@@ -99,6 +105,11 @@ function showModal({ title, message, confirmText = "是", cancelText = "否" }) 
   });
 }
 
+function getOrderedRestaurantEntries() {
+  const entries = Object.entries(restaurants);
+  return entries.sort((a, b) => restaurantOrder.indexOf(a[0]) - restaurantOrder.indexOf(b[0]));
+}
+
 function getDisplayName(item, restaurantKey) {
   if (restaurantKey === "arabic") {
     return `${item.cn} / ${item.ar}`;
@@ -110,11 +121,6 @@ function getExportName(item, restaurantKey) {
   return restaurantKey === "arabic" ? item.ar : item.en;
 }
 
-function clearCurrentMenu() {
-  state.cart = [];
-  renderCart();
-}
-
 function setDefaultRestaurantNameByRestaurantKey(restaurantKey) {
   const current = (invoiceForm.elements.restaurantName.value || "").trim();
   if (restaurantKey === "sichuan" && current === "") {
@@ -124,7 +130,7 @@ function setDefaultRestaurantNameByRestaurantKey(restaurantKey) {
 
 function getLocalInvoices() {
   try {
-    const raw = sessionStorage.getItem("saved_invoices_v11");
+    const raw = sessionStorage.getItem("saved_invoices_v121");
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -132,27 +138,88 @@ function getLocalInvoices() {
 }
 
 function setLocalInvoices(invoices) {
-  sessionStorage.setItem("saved_invoices_v11", JSON.stringify(invoices));
+  sessionStorage.setItem("saved_invoices_v121", JSON.stringify(invoices));
+}
+
+function clearCurrentMenu() {
+  state.cart = [];
+  renderCart();
+}
+
+function calcTotals() {
+  const subtotal = state.cart.reduce((sum, row) => sum + row.price * row.qty, 0);
+  const taxRate = Number(taxRateEl.value || 0);
+  const taxAmount = subtotal * (taxRate / 100);
+  return {
+    subtotal,
+    taxRate,
+    taxAmount,
+    total: subtotal + taxAmount
+  };
+}
+
+function setPanelFocus(panel) {
+  appRoot.classList.add("has-focus");
+  panels.forEach((item) => item.classList.remove("focus"));
+  panel.classList.add("focus");
+}
+
+function clearPanelFocus() {
+  appRoot.classList.remove("has-focus");
+  panels.forEach((item) => item.classList.remove("focus"));
+}
+
+function findCartItemById(id) {
+  return state.cart.find((row) => row.id === id);
+}
+
+function setCartQtyById(id, qty) {
+  const item = findCartItemById(id);
+  if (!item) return;
+  if (qty <= 0) {
+    state.cart = state.cart.filter((row) => row.id !== id);
+  } else {
+    item.qty = qty;
+  }
+  renderCart();
+}
+
+function adjustCartQty(id, delta) {
+  const item = findCartItemById(id);
+  if (!item) return;
+  const nextQty = item.qty + delta;
+  if (nextQty <= 0) {
+    showModal({
+      title: "删除菜品",
+      message: "是否删除菜品"
+    }).then((confirmed) => {
+      if (!confirmed) return;
+      state.cart = state.cart.filter((row) => row.id !== id);
+      renderCart();
+    });
+    return;
+  }
+  item.qty = nextQty;
+  renderCart();
 }
 
 function applyInvoiceToCurrentView(invoice) {
   state.currentRestaurant = invoice.restaurantKey || state.currentRestaurant;
   if (!restaurants[state.currentRestaurant]) {
-    state.currentRestaurant = Object.keys(restaurants)[0];
+    state.currentRestaurant = restaurantOrder[0];
   }
 
-  const categories = restaurants[state.currentRestaurant]?.categories || ["dishes"];
-  state.currentCategory = categories[0];
+  state.currentCategory = restaurants[state.currentRestaurant]?.categories?.[0] || "dishes";
   state.cart = invoice.items || [];
 
-  if (invoice.invoiceNo) invoiceForm.elements.invoiceNo.value = invoice.invoiceNo;
-  if (invoice.invoiceDate) invoiceForm.elements.invoiceDate.value = invoice.invoiceDate;
-  if (invoice.payer) invoiceForm.elements.payer.value = invoice.payer;
-  if (invoice.taxNo) invoiceForm.elements.taxNo.value = invoice.taxNo;
-  if (invoice.project) invoiceForm.elements.project.value = invoice.project;
-  if (invoice.handler) invoiceForm.elements.handler.value = invoice.handler;
-  if (invoice.note) invoiceForm.elements.note.value = invoice.note;
-  if (invoice.restaurantName) invoiceForm.elements.restaurantName.value = invoice.restaurantName;
+  invoiceForm.elements.invoiceNo.value = invoice.invoiceNo || "";
+  invoiceForm.elements.invoiceDate.value = invoice.invoiceDate || "";
+  invoiceForm.elements.payer.value = invoice.payer || "";
+  invoiceForm.elements.taxNo.value = invoice.taxNo || "";
+  invoiceForm.elements.project.value = invoice.project || "";
+  invoiceForm.elements.handler.value = invoice.handler || "";
+  invoiceForm.elements.note.value = invoice.note || "";
+  invoiceForm.elements.restaurantName.value = invoice.restaurantName || "";
   if (!invoice.restaurantName) setDefaultRestaurantNameByRestaurantKey(state.currentRestaurant);
   if (typeof invoice.taxRate === "number") taxRateEl.value = invoice.taxRate;
 
@@ -173,10 +240,9 @@ async function loadRestaurants() {
   restaurants = await res.json();
 
   if (!restaurants[state.currentRestaurant]) {
-    state.currentRestaurant = Object.keys(restaurants)[0];
+    state.currentRestaurant = restaurantOrder.find((key) => restaurants[key]) || Object.keys(restaurants)[0];
   }
-  const categories = restaurants[state.currentRestaurant]?.categories || ["dishes"];
-  state.currentCategory = categories[0];
+  state.currentCategory = restaurants[state.currentRestaurant]?.categories?.[0] || "dishes";
   setDefaultRestaurantNameByRestaurantKey(state.currentRestaurant);
 
   renderTabs();
@@ -208,7 +274,7 @@ async function loadSavedInvoices() {
 
 function renderTabs() {
   tabWrap.innerHTML = "";
-  Object.entries(restaurants).forEach(([key, restaurant]) => {
+  getOrderedRestaurantEntries().forEach(([key, restaurant]) => {
     const btn = document.createElement("button");
     btn.textContent = `${restaurant.label}（${restaurant.items.length} 类）`;
     btn.className = key === state.currentRestaurant ? "active" : "";
@@ -253,32 +319,63 @@ function renderCategoryTabs() {
   });
 }
 
-async function addToCart(item) {
+async function ensureRestaurantConsistency() {
   const hasCrossRestaurantItems = state.cart.some((row) => row.restaurant !== state.currentRestaurant);
-  if (hasCrossRestaurantItems) {
-    const confirmed = await showModal({
-      title: "切换餐厅",
-      message: "如果切换餐厅将清空当前菜单，是否继续？"
-    });
-    if (!confirmed) return;
-    clearCurrentMenu();
-  }
+  if (!hasCrossRestaurantItems) return true;
 
-  const found = state.cart.find((row) => row.id === item.id);
-  if (found) {
-    found.qty += 1;
-  } else {
-    state.cart.push({
-      id: item.id,
-      category: item.category,
-      restaurant: state.currentRestaurant,
-      displayName: getDisplayName(item, state.currentRestaurant),
-      exportName: getExportName(item, state.currentRestaurant),
-      price: item.price,
-      qty: 1
-    });
-  }
-  renderCart();
+  const confirmed = await showModal({
+    title: "切换餐厅",
+    message: "如果切换餐厅将清空当前菜单，是否继续？"
+  });
+  if (!confirmed) return false;
+  clearCurrentMenu();
+  return true;
+}
+
+function getMenuItemQty(itemId) {
+  return state.cart.find((row) => row.id === itemId)?.qty || 0;
+}
+
+function createQtyControl(itemId, qty, onChange) {
+  const wrap = document.createElement("div");
+  wrap.className = "qty-control";
+
+  const minusBtn = document.createElement("button");
+  minusBtn.type = "button";
+  minusBtn.textContent = "-";
+  minusBtn.onclick = () => onChange(-1);
+
+  const qtyInput = document.createElement("input");
+  qtyInput.type = "text";
+  qtyInput.value = String(qty);
+  qtyInput.readOnly = true;
+  qtyInput.ondblclick = () => {
+    qtyInput.readOnly = false;
+    qtyInput.focus();
+    qtyInput.select();
+  };
+  qtyInput.onblur = () => {
+    const parsed = Number(qtyInput.value);
+    qtyInput.readOnly = true;
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      qtyInput.value = String(qty);
+      return;
+    }
+    onChange(parsed - qty);
+  };
+  qtyInput.onkeydown = (event) => {
+    if (event.key === "Enter") qtyInput.blur();
+  };
+
+  const plusBtn = document.createElement("button");
+  plusBtn.type = "button";
+  plusBtn.textContent = "+";
+  plusBtn.onclick = () => onChange(1);
+
+  wrap.appendChild(minusBtn);
+  wrap.appendChild(qtyInput);
+  wrap.appendChild(plusBtn);
+  return wrap;
 }
 
 function renderMenu() {
@@ -290,17 +387,60 @@ function renderMenu() {
   });
 
   menuGrid.innerHTML = "";
+  menuGrid.classList.remove("menu-animate");
+  requestAnimationFrame(() => menuGrid.classList.add("menu-animate"));
+
   list.forEach((item) => {
     const card = document.createElement("div");
     card.className = "menu-item";
-    card.innerHTML = `
-      <div>
-        <div><strong>${getDisplayName(item, state.currentRestaurant)}</strong></div>
-        <div>¥ ${item.price.toFixed(2)}</div>
-      </div>
-      <button>加入</button>
-    `;
-    card.querySelector("button").onclick = async () => addToCart(item);
+
+    const info = document.createElement("div");
+    info.innerHTML = `<div><strong>${getDisplayName(item, state.currentRestaurant)}</strong></div><div>¥ ${item.price.toFixed(2)}</div>`;
+
+    const qty = getMenuItemQty(item.id);
+    if (qty === 0) {
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "plus-btn";
+      addBtn.textContent = "+";
+      addBtn.onclick = async () => {
+        const pass = await ensureRestaurantConsistency();
+        if (!pass) return;
+        state.cart.push({
+          id: item.id,
+          category: item.category,
+          restaurant: state.currentRestaurant,
+          displayName: getDisplayName(item, state.currentRestaurant),
+          exportName: getExportName(item, state.currentRestaurant),
+          price: item.price,
+          qty: 1
+        });
+        renderMenu();
+        renderCart();
+      };
+      card.appendChild(info);
+      card.appendChild(addBtn);
+    } else {
+      const control = createQtyControl(item.id, qty, async (delta) => {
+        const pass = await ensureRestaurantConsistency();
+        if (!pass) return;
+        const row = findCartItemById(item.id);
+        if (!row) return;
+        const next = row.qty + delta;
+        if (next <= 0) {
+          const ok = await showModal({ title: "删除菜品", message: "是否删除菜品" });
+          if (!ok) return;
+          state.cart = state.cart.filter((entry) => entry.id !== item.id);
+        } else {
+          row.qty = next;
+        }
+        renderMenu();
+        renderCart();
+      });
+      card.appendChild(info);
+      card.appendChild(control);
+    }
+
     menuGrid.appendChild(card);
   });
 }
@@ -314,33 +454,42 @@ function renderCart() {
   state.cart.forEach((row, index) => {
     const line = document.createElement("div");
     line.className = "cart-row";
-    line.innerHTML = `
-      <span>${row.displayName} × ${row.qty}</span>
-      <strong>¥ ${(row.price * row.qty).toFixed(2)}</strong>
-      <button data-index="${index}">删除</button>
-    `;
-    line.querySelector("button").onclick = () => {
-      state.cart.splice(index, 1);
+
+    const left = document.createElement("span");
+    left.textContent = `${index + 1}. ${row.displayName}`;
+
+    const price = document.createElement("strong");
+    price.textContent = `¥ ${(row.price * row.qty).toFixed(2)}`;
+
+    const control = createQtyControl(row.id, row.qty, async (delta) => {
+      const item = findCartItemById(row.id);
+      if (!item) return;
+      const next = item.qty + delta;
+      if (next <= 0) {
+        const ok = await showModal({ title: "删除菜品", message: "是否删除菜品" });
+        if (!ok) return;
+        state.cart = state.cart.filter((entry) => entry.id !== row.id);
+      } else {
+        item.qty = next;
+      }
+      renderMenu();
       renderCart();
-    };
+    });
+
+    line.appendChild(left);
+    line.appendChild(price);
+    line.appendChild(control);
     cartList.appendChild(line);
   });
 
-  const subtotal = state.cart.reduce((sum, row) => sum + row.price * row.qty, 0);
-  const taxRate = Number(taxRateEl.value || 0) / 100;
-  const grandTotal = subtotal * (1 + taxRate);
-
-  subtotalEl.textContent = `¥ ${subtotal.toFixed(2)}`;
-  grandTotalEl.textContent = `¥ ${grandTotal.toFixed(2)}`;
+  const totals = calcTotals();
+  subtotalEl.textContent = `¥ ${totals.subtotal.toFixed(2)}`;
+  grandTotalEl.textContent = `¥ ${totals.total.toFixed(2)}`;
   renderPreview();
 }
 
 function getInvoiceData() {
-  const subtotal = state.cart.reduce((sum, row) => sum + row.price * row.qty, 0);
-  const taxRate = Number(taxRateEl.value || 0);
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
-
+  const totals = calcTotals();
   return {
     invoiceNo: invoiceForm.elements.invoiceNo.value,
     invoiceDate: invoiceForm.elements.invoiceDate.value,
@@ -353,10 +502,10 @@ function getInvoiceData() {
     restaurant: restaurants[state.currentRestaurant]?.label || "",
     restaurantKey: state.currentRestaurant,
     items: state.cart,
-    subtotal,
-    taxRate,
-    taxAmount,
-    total,
+    subtotal: totals.subtotal,
+    taxRate: totals.taxRate,
+    taxAmount: totals.taxAmount,
+    total: totals.total,
     template: state.template
   };
 }
@@ -366,27 +515,27 @@ function renderPreview() {
   invoicePreview.className = `invoice-preview ${state.template}`;
 
   const itemsHtml = state.cart
-    .map((row) => `<tr><td>${row.displayName}</td><td>${row.qty}</td><td>¥ ${row.price.toFixed(2)}</td><td>¥ ${(row.price * row.qty).toFixed(2)}</td></tr>`)
+    .map((row, index) => `<tr><td>${index + 1}</td><td>${row.displayName}</td><td>${row.qty}</td><td>¥ ${row.price.toFixed(2)}</td><td>¥ ${(row.price * row.qty).toFixed(2)}</td></tr>`)
     .join("");
 
   invoicePreview.innerHTML = `
     <h3>发票预览 - ${state.template}</h3>
-    <p><strong>发票号：</strong>${data.invoiceNo}</p>
-    <p><strong>开票日期：</strong>${data.invoiceDate}</p>
-    <p><strong>付款方：</strong>${data.payer}</p>
-    <p><strong>税号：</strong>${data.taxNo}</p>
-    <p><strong>报销项目：</strong>${data.project} | <strong>经办人：</strong>${data.handler}</p>
+    <p><strong>发票号：</strong>${data.invoiceNo || ""}</p>
+    <p><strong>开票日期：</strong>${data.invoiceDate || ""}</p>
+    <p><strong>付款方：</strong>${data.payer || ""}</p>
+    <p><strong>税号：</strong>${data.taxNo || ""}</p>
+    <p><strong>报销项目：</strong>${data.project || ""} | <strong>经办人：</strong>${data.handler || ""}</p>
     <p><strong>餐厅：</strong>${data.restaurant}</p>
     <table style="width:100%;border-collapse:collapse;">
       <thead>
-        <tr><th align="left">品名</th><th>数量</th><th>单价</th><th>小计</th></tr>
+        <tr><th>No.</th><th align="left">品名</th><th>数量</th><th>单价</th><th>小计</th></tr>
       </thead>
-      <tbody>${itemsHtml || "<tr><td colspan='4'>暂无项目</td></tr>"}</tbody>
+      <tbody>${itemsHtml || "<tr><td colspan='5'>暂无项目</td></tr>"}</tbody>
     </table>
     <p><strong>未税金额：</strong>¥ ${data.subtotal.toFixed(2)}</p>
     <p><strong>税额(${data.taxRate}%):</strong>¥ ${data.taxAmount.toFixed(2)}</p>
     <p><strong>合计：</strong>¥ ${data.total.toFixed(2)}</p>
-    <p><strong>备注：</strong>${data.note}</p>
+    <p><strong>备注：</strong>${data.note || ""}</p>
   `;
 }
 
@@ -401,9 +550,18 @@ function renderSavedInvoices() {
     const wrap = document.createElement("div");
     wrap.className = "saved-item-wrap";
 
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "saved-check";
+    checkbox.checked = state.selectedSavedIds.has(invoice.id);
+    checkbox.onchange = () => {
+      if (checkbox.checked) state.selectedSavedIds.add(invoice.id);
+      else state.selectedSavedIds.delete(invoice.id);
+    };
+
     const itemBtn = document.createElement("button");
     itemBtn.className = "saved-item";
-    itemBtn.textContent = `${invoice.invoiceNo} | ${invoice.restaurant} | ${invoice.invoiceDate}`;
+    itemBtn.textContent = `${invoice.invoiceNo || "未编号"} | ${invoice.restaurant} | ${invoice.invoiceDate || "无日期"}`;
     itemBtn.onclick = async () => {
       const confirmed = await showModal({
         title: "读取已保存发票",
@@ -418,39 +576,47 @@ function renderSavedInvoices() {
     deleteBtn.className = "delete-btn";
     deleteBtn.textContent = "删除";
     deleteBtn.onclick = async () => {
-      const confirmed = await showModal({
-        title: "删除确认",
-        message: "是否删除这条已保存发票？"
-      });
+      const confirmed = await showModal({ title: "删除确认", message: "是否删除这条已保存发票？" });
       if (!confirmed) return;
-      if (state.storageMode === "api") {
-        try {
-          const response = await fetch(`/api/invoices/${invoice.id}`, { method: "DELETE" });
-          if (!response.ok) throw new Error("api delete failed");
-        } catch {
-          state.storageMode = "local";
-          const localInvoices = getLocalInvoices().filter((row) => row.id !== invoice.id);
-          setLocalInvoices(localInvoices);
-        }
-      } else {
-        const localInvoices = getLocalInvoices().filter((row) => row.id !== invoice.id);
-        setLocalInvoices(localInvoices);
-      }
+      await deleteInvoicesByIds([invoice.id]);
       await loadSavedInvoices();
     };
 
+    wrap.appendChild(checkbox);
     wrap.appendChild(itemBtn);
     wrap.appendChild(deleteBtn);
     savedInvoicesEl.appendChild(wrap);
   });
 }
 
+async function deleteInvoicesByIds(ids) {
+  if (!ids.length) return;
+  if (state.storageMode === "api") {
+    for (const id of ids) {
+      try {
+        const response = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
+        if (!response.ok) throw new Error("api delete failed");
+      } catch {
+        state.storageMode = "local";
+        break;
+      }
+    }
+  }
+
+  if (state.storageMode === "local") {
+    const next = getLocalInvoices().filter((row) => !ids.includes(row.id));
+    setLocalInvoices(next);
+  }
+
+  ids.forEach((id) => state.selectedSavedIds.delete(id));
+}
+
 async function saveInvoiceToServer() {
   const data = getInvoiceData();
   if (!data.items.length) {
     await showModal({
-      title: "无法保存",
-      message: "请先选择菜品再保存发票",
+      title: "当前为空",
+      message: "当前为空，请添加菜品",
       confirmText: "确定",
       cancelText: "关闭"
     });
@@ -464,7 +630,6 @@ async function saveInvoiceToServer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
       });
-
       if (!response.ok) throw new Error("api save failed");
       const saved = await response.json();
       await loadSavedInvoices();
@@ -487,6 +652,12 @@ async function saveInvoiceToServer() {
 }
 
 async function onSaveInvoiceClick() {
+  const data = getInvoiceData();
+  if (!data.items.length) {
+    await showModal({ title: "当前为空", message: "当前为空，请添加菜品", confirmText: "确定", cancelText: "关闭" });
+    return;
+  }
+
   const confirmed = await showModal({
     title: "保存发票",
     message: "是否临时保存当前发票并清空选项？"
@@ -497,23 +668,14 @@ async function onSaveInvoiceClick() {
   if (!saved) return;
 
   clearCurrentMenu();
-  await showModal({
-    title: "保存成功",
-    message: `发票已保存，记录ID: ${saved.id}`,
-    confirmText: "好的",
-    cancelText: "关闭"
-  });
+  renderMenu();
+  await showModal({ title: "保存成功", message: `发票已保存，记录ID: ${saved.id}`, confirmText: "好的", cancelText: "关闭" });
 }
 
 async function onExportClick() {
   const data = getInvoiceData();
   if (!data.items.length) {
-    await showModal({
-      title: "无法导出",
-      message: "请先选择菜品再导出发票",
-      confirmText: "确定",
-      cancelText: "关闭"
-    });
+    await showModal({ title: "当前为空", message: "当前为空，请添加菜品", confirmText: "确定", cancelText: "关闭" });
     return;
   }
 
@@ -527,6 +689,7 @@ async function onExportClick() {
     if (!saved) return;
   } else {
     clearCurrentMenu();
+    renderMenu();
   }
 
   const response = await fetch("/api/export-template", {
@@ -536,12 +699,7 @@ async function onExportClick() {
   });
 
   if (!response.ok) {
-    await showModal({
-      title: "导出失败",
-      message: "模板导出失败，请稍后重试。",
-      confirmText: "确定",
-      cancelText: "关闭"
-    });
+    await showModal({ title: "导出失败", message: "模板导出失败，请稍后重试。", confirmText: "确定", cancelText: "关闭" });
     return;
   }
 
@@ -554,6 +712,13 @@ async function onExportClick() {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+
+  await showModal({
+    title: "导出成功",
+    message: "导出成功，请注意格式修改",
+    confirmText: "确定",
+    cancelText: "关闭"
+  });
 }
 
 async function onExitSite() {
@@ -565,11 +730,37 @@ async function onExitSite() {
 
   state.savedInvoices = [];
   state.cart = [];
-  sessionStorage.removeItem("saved_invoices_v11");
+  state.selectedSavedIds.clear();
+  sessionStorage.removeItem("saved_invoices_v121");
   renderSavedInvoices();
   renderCart();
+  renderMenu();
   appRoot.classList.add("hidden");
   landingPage.classList.remove("hidden");
+}
+
+async function onBatchDelete() {
+  if (!state.selectedSavedIds.size) {
+    await showModal({ title: "提示", message: "请先勾选要删除的发票", confirmText: "确定", cancelText: "关闭" });
+    return;
+  }
+
+  const ok = await showModal({ title: "批量删除", message: "是否删除已勾选发票？" });
+  if (!ok) return;
+
+  await deleteInvoicesByIds([...state.selectedSavedIds]);
+  await loadSavedInvoices();
+}
+
+function bindFocusHandlers() {
+  panels.forEach((panel) => {
+    panel.addEventListener("mouseenter", () => setPanelFocus(panel));
+    panel.addEventListener("mouseleave", clearPanelFocus);
+    panel.addEventListener("focusin", () => setPanelFocus(panel));
+    panel.addEventListener("focusout", () => {
+      if (!panel.contains(document.activeElement)) clearPanelFocus();
+    });
+  });
 }
 
 function bindEvents() {
@@ -579,10 +770,16 @@ function bindEvents() {
   });
 
   exitBtn.addEventListener("click", onExitSite);
+  clearCartBtn.addEventListener("click", async () => {
+    if (!state.cart.length) return;
+    const ok = await showModal({ title: "清空菜单", message: "是否一键清空当前已选清单？" });
+    if (!ok) return;
+    clearCurrentMenu();
+    renderMenu();
+  });
 
-  window.addEventListener("beforeunload", (event) => {
-    event.preventDefault();
-    event.returnValue = "每一次退出网站，当前已保存将清空，是否退出？";
+  window.addEventListener("beforeunload", () => {
+    sessionStorage.removeItem("saved_invoices_v121");
   });
 
   searchInput.addEventListener("input", renderMenu);
@@ -599,6 +796,8 @@ function bindEvents() {
 
   saveBtn.addEventListener("click", onSaveInvoiceClick);
   exportBtn.addEventListener("click", onExportClick);
+  batchDeleteBtn.addEventListener("click", onBatchDelete);
+  bindFocusHandlers();
 }
 
 async function bootstrap() {

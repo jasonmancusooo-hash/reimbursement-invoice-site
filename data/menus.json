@@ -176,7 +176,9 @@
       { "id": "H47", "category": "drinks", "cn": "矿泉水", "en": "Mineral Water", "price": 5 },
       { "id": "H48", "category": "drinks", "cn": "鲜榨西瓜汁", "en": "Fresh Watermelon Juice", "price": 28 },
       { "id": "H49", "category": "dishes", "cn": "毛肚黄喉拼盘", "en": "Tripe and Aorta Combo", "price": 158 },
-      { "id": "H50", "category": "dishes", "cn": "牛羊双拼大份", "en": "Large Beef and Lamb Combo", "price": 198 }
+      { "id": "H50", "category": "dishes", "cn": "牛羊双拼大份", "en": "Large Beef and Lamb Combo", "price": 198 },
+      { "id": "H51", "category": "drinks", "cn": "啤酒", "en": "Beer", "price": 10 },
+      { "id": "H52", "category": "drinks", "cn": "白酒", "en": "Baijiu", "price": 160 }
     ]
   }
 }

@@ -11,6 +11,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   </head>
   <body>
+    <div class="pixel-bg"></div>
     <section id="landingPage" class="landing">
       <div class="landing-card">
         <p class="kicker">Reimbursement Ready</p>
@@ -47,13 +48,16 @@
         <div>
           <h2>已选清单</h2>
           <div id="cartList" class="cart-list"></div>
+          <div class="cart-actions">
+            <button type="button" id="clearCartBtn" class="clear-cart-btn">一键清空</button>
+          </div>
           <div class="total-row">
             <span>小计</span>
             <strong id="subtotal">0.00</strong>
           </div>
           <div class="total-row">
             <span>税率 (%)</span>
-            <input id="taxRate" type="number" min="0" max="100" value="5" />
+            <input id="taxRate" type="number" min="0" max="100" value="0" />
           </div>
           <div class="total-row grand">
             <span>含税总计</span>
@@ -93,6 +97,9 @@
 
       <section class="panel">
         <h2>5. 已保存发票</h2>
+        <div class="saved-toolbar">
+          <button type="button" id="batchDeleteBtn" class="delete-btn">批量删除</button>
+        </div>
         <div id="savedInvoices" class="saved-list"></div>
       </section>
     </main>

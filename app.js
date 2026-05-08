@@ -52,7 +52,7 @@ app.get("/api/invoices", async (_req, res) => {
 
 app.post("/api/invoices", async (req, res) => {
   const payload = req.body || {};
-  if (!payload.invoiceNo || !Array.isArray(payload.items) || payload.items.length === 0) {
+  if (!Array.isArray(payload.items) || payload.items.length === 0) {
     return res.status(400).json({ error: "缺少必要发票数据" });
   }
 
@@ -82,9 +82,9 @@ app.post("/api/export-template", async (req, res) => {
     const items = Array.isArray(payload.items) ? payload.items : [];
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(exportTemplatePath);
-    const sheet = workbook.worksheets[1];
+    const sheet = workbook.worksheets[0];
     if (!sheet) {
-      return res.status(400).json({ error: "模板第二工作表不存在" });
+      return res.status(400).json({ error: "模板工作表不存在" });
     }
 
     sheet.getCell("D14").value = `Date: ${formatTemplateDate(payload.invoiceDate || "")}`;
