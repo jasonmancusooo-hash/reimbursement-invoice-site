@@ -29,12 +29,16 @@ const enterSystemBtn = document.getElementById("enterSystemBtn");
 const exitBtn = document.getElementById("exitBtn");
 const versionInfo = document.getElementById("versionInfo");
 const versionInfoLanding = document.getElementById("versionInfoLanding");
+const openChangelogBtn = document.getElementById("openChangelogBtn");
+const changelogModal = document.getElementById("changelogModal");
+const closeChangelogBtn = document.getElementById("closeChangelogBtn");
 
 const confirmModal = document.getElementById("confirmModal");
 const modalTitle = document.getElementById("modalTitle");
 const modalMessage = document.getElementById("modalMessage");
 const modalConfirm = document.getElementById("modalConfirm");
 const modalCancel = document.getElementById("modalCancel");
+const modalNeutral = document.getElementById("modalNeutral");
 
 const tabWrap = document.getElementById("restaurantTabs");
 const categoryTabs = document.getElementById("categoryTabs");
@@ -76,11 +80,17 @@ function setVersionText() {
   versionInfoLanding.textContent = text;
 }
 
-function showModal({ title, message, confirmText = "是", cancelText = "否" }) {
+function showModal({ title, message, confirmText = "是", cancelText = "否", neutralText = "" }) {
   modalTitle.textContent = title;
   modalMessage.textContent = message;
   modalConfirm.textContent = confirmText;
   modalCancel.textContent = cancelText;
+  if (neutralText) {
+    modalNeutral.textContent = neutralText;
+    modalNeutral.classList.remove("hidden");
+  } else {
+    modalNeutral.classList.add("hidden");
+  }
   confirmModal.classList.remove("hidden");
 
   return new Promise((resolve) => {
@@ -88,20 +98,27 @@ function showModal({ title, message, confirmText = "是", cancelText = "否" }) 
       confirmModal.classList.add("hidden");
       modalConfirm.removeEventListener("click", onConfirm);
       modalCancel.removeEventListener("click", onCancel);
+      modalNeutral.removeEventListener("click", onNeutral);
     };
 
     const onConfirm = () => {
       cleanup();
-      resolve(true);
+      resolve(neutralText ? "confirm" : true);
     };
 
     const onCancel = () => {
       cleanup();
-      resolve(false);
+      resolve(neutralText ? "cancel" : false);
+    };
+
+    const onNeutral = () => {
+      cleanup();
+      resolve("neutral");
     };
 
     modalConfirm.addEventListener("click", onConfirm);
     modalCancel.addEventListener("click", onCancel);
+    modalNeutral.addEventListener("click", onNeutral);
   });
 }
 
@@ -378,7 +395,7 @@ function createQtyControl(itemId, qty, onChange) {
   return wrap;
 }
 
-function renderMenu() {
+function renderMenu(animate = true) {
   const query = searchInput.value.trim().toLowerCase();
   const items = restaurants[state.currentRestaurant]?.items || [];
   const list = items.filter((item) => {
@@ -387,8 +404,12 @@ function renderMenu() {
   });
 
   menuGrid.innerHTML = "";
-  menuGrid.classList.remove("menu-animate");
-  requestAnimationFrame(() => menuGrid.classList.add("menu-animate"));
+  if (animate) {
+    menuGrid.classList.remove("menu-animate");
+    requestAnimationFrame(() => menuGrid.classList.add("menu-animate"));
+  } else {
+    menuGrid.classList.remove("menu-animate");
+  }
 
   list.forEach((item) => {
     const card = document.createElement("div");
@@ -415,7 +436,7 @@ function renderMenu() {
           price: item.price,
           qty: 1
         });
-        renderMenu();
+        renderMenu(false);
         renderCart();
       };
       card.appendChild(info);
@@ -434,7 +455,7 @@ function renderMenu() {
         } else {
           row.qty = next;
         }
-        renderMenu();
+        renderMenu(false);
         renderCart();
       });
       card.appendChild(info);
@@ -472,7 +493,7 @@ function renderCart() {
       } else {
         item.qty = next;
       }
-      renderMenu();
+      renderMenu(false);
       renderCart();
     });
 
@@ -668,7 +689,7 @@ async function onSaveInvoiceClick() {
   if (!saved) return;
 
   clearCurrentMenu();
-  renderMenu();
+  renderMenu(false);
   await showModal({ title: "保存成功", message: `发票已保存，记录ID: ${saved.id}`, confirmText: "好的", cancelText: "关闭" });
 }
 
@@ -679,17 +700,24 @@ async function onExportClick() {
     return;
   }
 
-  const needSave = await showModal({
+  const exportChoice = await showModal({
     title: "导出发票",
-    message: "即将导出发票excel，是否需要保存当前菜单？"
+    message: "即将导出发票excel，是否需要保存当前菜单？",
+    confirmText: "保存",
+    cancelText: "不保存",
+    neutralText: "取消"
   });
 
-  if (needSave) {
+  if (exportChoice === "neutral") {
+    return;
+  }
+
+  if (exportChoice === "confirm") {
     const saved = await saveInvoiceToServer();
     if (!saved) return;
   } else {
     clearCurrentMenu();
-    renderMenu();
+    renderMenu(false);
   }
 
   const response = await fetch("/api/export-template", {
@@ -767,6 +795,14 @@ function bindEvents() {
   enterSystemBtn.addEventListener("click", () => {
     landingPage.classList.add("hidden");
     appRoot.classList.remove("hidden");
+  });
+
+  openChangelogBtn.addEventListener("click", () => {
+    changelogModal.classList.remove("hidden");
+  });
+
+  closeChangelogBtn.addEventListener("click", () => {
+    changelogModal.classList.add("hidden");
   });
 
   exitBtn.addEventListener("click", onExitSite);
