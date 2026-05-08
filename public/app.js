@@ -57,6 +57,7 @@ const saveBtn = document.getElementById("saveBtn");
 const savedInvoicesEl = document.getElementById("savedInvoices");
 const batchDeleteBtn = document.getElementById("batchDeleteBtn");
 const panels = [...document.querySelectorAll(".panel")];
+const pixelFlowBg = document.getElementById("pixelFlowBg");
 
 if (!invoiceForm.elements.invoiceDate.value) {
   invoiceForm.elements.invoiceDate.valueAsDate = new Date();
@@ -836,7 +837,64 @@ function bindEvents() {
   bindFocusHandlers();
 }
 
+function initPixelFlowBackground() {
+  if (!pixelFlowBg) return;
+  const ctx = pixelFlowBg.getContext("2d", { alpha: true });
+  if (!ctx) return;
+
+  let width = 0;
+  let height = 0;
+  let animationId = 0;
+  const step = 16;
+
+  function resize() {
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    pixelFlowBg.width = Math.floor(width * ratio);
+    pixelFlowBg.height = Math.floor(height * ratio);
+    pixelFlowBg.style.width = `${width}px`;
+    pixelFlowBg.style.height = `${height}px`;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  }
+
+  function draw(timeMs) {
+    const t = timeMs * 0.0007;
+    ctx.clearRect(0, 0, width, height);
+
+    for (let y = 0; y < height; y += step) {
+      for (let x = 0; x < width; x += step) {
+        const flow = Math.sin((x * 0.012) + t) + Math.cos((y * 0.014) - t * 1.3);
+        const glow = Math.max(0, (flow + 2) / 4);
+        if (glow < 0.2) continue;
+
+        const hue = 185 + glow * 40;
+        const alpha = 0.08 + glow * 0.24;
+        const size = 5 + glow * 7;
+
+        ctx.fillStyle = `hsla(${hue}, 92%, 62%, ${alpha})`;
+        ctx.fillRect(x + 4, y + 4, size, size);
+
+        if (glow > 0.65) {
+          ctx.shadowColor = `hsla(${hue}, 98%, 70%, 0.75)`;
+          ctx.shadowBlur = 10;
+          ctx.fillRect(x + 4, y + 4, size, size);
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
+
+    animationId = requestAnimationFrame(draw);
+  }
+
+  resize();
+  animationId = requestAnimationFrame(draw);
+  window.addEventListener("resize", resize);
+  window.addEventListener("beforeunload", () => cancelAnimationFrame(animationId), { once: true });
+}
+
 async function bootstrap() {
+  initPixelFlowBackground();
   setVersionText();
   bindEvents();
   await Promise.all([loadRestaurants(), loadSavedInvoices()]);
