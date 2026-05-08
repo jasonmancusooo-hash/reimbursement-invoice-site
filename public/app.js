@@ -124,7 +124,7 @@ function setDefaultRestaurantNameByRestaurantKey(restaurantKey) {
 
 function getLocalInvoices() {
   try {
-    const raw = localStorage.getItem("saved_invoices_v11");
+    const raw = sessionStorage.getItem("saved_invoices_v11");
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -132,7 +132,7 @@ function getLocalInvoices() {
 }
 
 function setLocalInvoices(invoices) {
-  localStorage.setItem("saved_invoices_v11", JSON.stringify(invoices));
+  sessionStorage.setItem("saved_invoices_v11", JSON.stringify(invoices));
 }
 
 function applyInvoiceToCurrentView(invoice) {
@@ -565,6 +565,7 @@ async function onExitSite() {
 
   state.savedInvoices = [];
   state.cart = [];
+  sessionStorage.removeItem("saved_invoices_v11");
   renderSavedInvoices();
   renderCart();
   appRoot.classList.add("hidden");

@@ -36,58 +36,6 @@ function formatTemplateDate(dateStr) {
   return `${Number(day)}/${Number(month)}/${year}`;
 }
 
-function applyStrictTemplateStyles(sheet) {
-  const blueFill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FF0B6686" }
-  };
-  const whiteFill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFFFFFFF" }
-  };
-  const grayFill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFC9C9C9" }
-  };
-  const topBottomBorder = {
-    top: { style: "thin", color: { argb: "FF000000" } },
-    bottom: { style: "thin", color: { argb: "FF000000" } }
-  };
-
-  for (let row = 1; row <= 6; row += 1) {
-    for (let col = 2; col <= 8; col += 1) {
-      const cell = sheet.getRow(row).getCell(col);
-      cell.fill = blueFill;
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      if (cell.font) {
-        cell.font = { ...cell.font, color: { argb: "FFFFFFFF" } };
-      }
-    }
-  }
-
-  for (let row = 16; row <= 33; row += 1) {
-    const fill = row === 16 ? whiteFill : row % 2 === 1 ? grayFill : whiteFill;
-    for (let col = 3; col <= 7; col += 1) {
-      const cell = sheet.getRow(row).getCell(col);
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.fill = fill;
-      cell.border = topBottomBorder;
-    }
-  }
-
-  for (let col = 2; col <= 8; col += 1) {
-    const cell = sheet.getRow(41).getCell(col);
-    cell.fill = blueFill;
-    cell.alignment = { horizontal: "center", vertical: "middle" };
-    if (cell.font) {
-      cell.font = { ...cell.font, color: { argb: "FFFFFFFF" } };
-    }
-  }
-}
-
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, now: new Date().toISOString() });
 });
@@ -139,12 +87,10 @@ app.post("/api/export-template", async (req, res) => {
       return res.status(400).json({ error: "模板第二工作表不存在" });
     }
 
-    if (payload.restaurantName && String(payload.restaurantName).trim()) {
-      sheet.getCell("G2").value = String(payload.restaurantName).trim();
-    }
     sheet.getCell("G4").value = `Date: ${formatTemplateDate(payload.invoiceDate || "")}`;
 
     for (let row = 17; row <= 33; row += 1) {
+      sheet.getCell(`C${row}`).value = row - 16;
       sheet.getCell(`D${row}`).value = null;
       sheet.getCell(`E${row}`).value = null;
       sheet.getCell(`F${row}`).value = null;
@@ -162,7 +108,9 @@ app.post("/api/export-template", async (req, res) => {
       };
     });
 
-    applyStrictTemplateStyles(sheet);
+    sheet.getCell("G34").value = Number(payload.subtotal || 0);
+    sheet.getCell("G35").value = null;
+    sheet.getCell("G37").value = Number(payload.total || 0);
 
     const out = await workbook.xlsx.writeBuffer();
     const filename = `${payload.invoiceNo || "invoice"}.xlsx`;
