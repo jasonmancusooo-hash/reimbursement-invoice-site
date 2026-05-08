@@ -115,6 +115,20 @@ function clearCurrentMenu() {
   renderCart();
 }
 
+function setDefaultRestaurantNameByRestaurantKey(restaurantKey) {
+  const current = (invoiceForm.elements.restaurantName.value || "").trim();
+  if (restaurantKey === "sichuan" && current === "") {
+    invoiceForm.elements.restaurantName.value = "Al Noor Hosting Company";
+  }
+}
+
+function toTemplateDate(dateStr) {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-");
+  if (!year || !month || !day) return dateStr;
+  return `${Number(day)}/${Number(month)}/${year}`;
+}
+
 function getLocalInvoices() {
   try {
     const raw = localStorage.getItem("saved_invoices_v11");
@@ -145,6 +159,8 @@ function applyInvoiceToCurrentView(invoice) {
   if (invoice.project) invoiceForm.elements.project.value = invoice.project;
   if (invoice.handler) invoiceForm.elements.handler.value = invoice.handler;
   if (invoice.note) invoiceForm.elements.note.value = invoice.note;
+  if (invoice.restaurantName) invoiceForm.elements.restaurantName.value = invoice.restaurantName;
+  if (!invoice.restaurantName) setDefaultRestaurantNameByRestaurantKey(state.currentRestaurant);
   if (typeof invoice.taxRate === "number") taxRateEl.value = invoice.taxRate;
 
   state.template = invoice.template || "classic";
@@ -168,6 +184,7 @@ async function loadRestaurants() {
   }
   const categories = restaurants[state.currentRestaurant]?.categories || ["dishes"];
   state.currentCategory = categories[0];
+  setDefaultRestaurantNameByRestaurantKey(state.currentRestaurant);
 
   renderTabs();
   renderCategoryTabs();
@@ -216,6 +233,7 @@ function renderTabs() {
 
       state.currentRestaurant = key;
       state.currentCategory = restaurants[state.currentRestaurant]?.categories?.[0] || "dishes";
+      setDefaultRestaurantNameByRestaurantKey(state.currentRestaurant);
       renderTabs();
       renderCategoryTabs();
       renderMenu();
@@ -338,6 +356,7 @@ function getInvoiceData() {
     project: invoiceForm.elements.project.value,
     handler: invoiceForm.elements.handler.value,
     note: invoiceForm.elements.note.value,
+    restaurantName: invoiceForm.elements.restaurantName.value,
     restaurant: restaurants[state.currentRestaurant]?.label || "",
     restaurantKey: state.currentRestaurant,
     items: state.cart,
@@ -540,11 +559,39 @@ async function onExportClick() {
   });
 
   if (window.XLSX) {
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "发票");
-    XLSX.writeFile(wb, `${data.invoiceNo || "invoice"}.xlsx`);
-    return;
+    try {
+      const response = await fetch("/templates/invoice-template.xlsx");
+      if (!response.ok) throw new Error("template fetch failed");
+      const buffer = await response.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: "array", cellStyles: true });
+      const sheetName = wb.SheetNames[1];
+      const ws = wb.Sheets[sheetName];
+      if (!ws) throw new Error("sheet2 missing");
+
+      ws.G4 = { t: "s", v: `Date: ${toTemplateDate(data.invoiceDate)}` };
+      if ((data.restaurantName || "").trim()) {
+        ws.G2 = { t: "s", v: data.restaurantName.trim() };
+      }
+
+      for (let row = 17; row <= 33; row += 1) {
+        ws[`D${row}`] = { t: "s", v: "" };
+        ws[`E${row}`] = { t: "n", v: 0 };
+        ws[`F${row}`] = { t: "n", v: 0 };
+      }
+
+      const maxRows = 17;
+      data.items.slice(0, maxRows).forEach((item, index) => {
+        const row = 17 + index;
+        ws[`D${row}`] = { t: "s", v: item.exportName };
+        ws[`E${row}`] = { t: "n", v: item.qty };
+        ws[`F${row}`] = { t: "n", v: item.price };
+      });
+
+      XLSX.writeFile(wb, `${data.invoiceNo || "invoice"}.xlsx`);
+      return;
+    } catch {
+      // Fall back to CSV export if template loading fails.
+    }
   }
 
   const csvRows = rows.map((columns) =>
